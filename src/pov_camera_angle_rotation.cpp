@@ -1,56 +1,50 @@
-// c++
-#include <vector>
-#include <cstdlib>
-#include <string>
-#define _USE_MATH_DEFINES
-#include <cmath>
-
-// ros
 #include <ros/ros.h>
-#include <tf/tf.h>
-#include <tf/transform_listener.h>
-#include <tf/transform_broadcaster.h>
+#include <cstdio>
+#include <geometry_msgs/TransformStamped.h>
+#include <tf2_ros/static_transform_broadcaster.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2/LinearMath/Quaternion.h>
 
-
-int main(int argc, char **argv)
+class BroadCasterTest
 {
-    ros::init(argc, argv, "pov_camera_angle_rotation");
-    ros::NodeHandle nh;
+public:
+  BroadCasterTest() : nh_()
+  {
+    timer_ = nh_.createTimer(ros::Duration(0.1), [&](const ros::TimerEvent& e) {
+      broadcast_dynamic_tf();
+      counter_++;
+    });
+  }
 
-    int Hz;
-    int direction_number;
+private:
+  void broadcast_dynamic_tf(void)
+  {
+    geometry_msgs::TransformStamped transformStamped;
+    transformStamped.header.stamp = ros::Time::now();
+    transformStamped.header.frame_id = "camera/flipped_front";
+    transformStamped.child_frame_id = "flipped_pov_camera";
+    transformStamped.transform.translation.x = 0;
+    transformStamped.transform.translation.y = 0;
+    transformStamped.transform.translation.z = 0;
+    tf2::Quaternion q;
+    q.setRPY(0, 0, counter_ * M_PI / 6);
+    transformStamped.transform.rotation.x = q.x();
+    transformStamped.transform.rotation.y = q.y();
+    transformStamped.transform.rotation.z = q.z();
+    transformStamped.transform.rotation.w = q.w();
+    dynamic_br_.sendTransform(transformStamped);
+  }
+  ros::NodeHandle nh_;
+  ros::Timer timer_;
+  tf2_ros::TransformBroadcaster dynamic_br_;
+  tf2_ros::StaticTransformBroadcaster static_br_;
+  int counter_;
+};
 
-    nh.param("loop_rate", Hz, 10);                      //loop_rate (defalt 10Hz)
-    nh.param("direction_number", direction_number, 6);  //direction number (default 6)
-    
-    ros::Rate loop_rate(Hz);
-
-    tf::TransformBroadcaster tf_broadcaster_;
-    std::string frame = "camera/flipped_front";
-    std::string child_frame = "flipped_pov_camera";
-    int count = 0;
-
-    tf::Quaternion tf_quaternion;
-    double roll = 0;
-    double pitch = 0;
-    double yaw   = (double)count * M_PI / (double)direction_number; 
-    tf_quaternion.setRPY(roll, pitch, yaw);
-
-    while(ros::ok()){
-        ros::spin();
-
-        tf_broadcaster_.sendTransform(
-            tf::StampedTransform(
-                tf::Transform(tf_quaternion, tf::Vector3(0.0, 0.0, 0.0)),
-                ros::Time::now(),
-                frame,
-                child_frame
-            )
-        );
-
-        count++;
-        if(count == direction_number)count = 0;
-
-        loop_rate.sleep();
-    }
-}
+int main(int argc, char** argv)
+{
+  ros::init(argc, argv, "my_static_tf2_broadcaster");
+  BroadCasterTest broadcast_test;
+  ros::spin();
+  return 0;
+};
