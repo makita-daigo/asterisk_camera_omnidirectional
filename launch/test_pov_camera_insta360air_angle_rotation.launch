@@ -74,7 +74,7 @@
         args="0 0 0 -1.570796 0 -1.570796 flipped_$(arg pov_camera_name) $(arg pov_camera_name) 100" output="screen" />
   
   <node name="$(arg pov_camera_name)_angle_rotation" pkg="asterisk_camera_omnidirectional" type="pov_camera_angle_rotation">
-    <param name="loop_rate" value="1"/>
+    <param name="loop_time" value="0.1"/>
     <param name="direction_number" value="6"/>
   </node>
   
